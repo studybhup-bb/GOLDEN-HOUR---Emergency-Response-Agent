@@ -3,114 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Golden Hour AI | Emergency Assistant</title>
+    <title>Golden Hour AI | Emergency</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .pulse { animation: pulse-red 2s infinite; }
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
-            70% { box-shadow: 0 0 0 20px rgba(220, 38, 38, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
-        }
-    </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
+<body class="bg-slate-950 text-white min-h-screen font-sans">
 
-    <nav class="border-b border-slate-800 p-4 bg-slate-900 flex justify-between items-center sticky top-0 z-50">
-        <div class="flex items-center gap-2">
-            <div class="bg-red-600 p-2 rounded-lg"><i class="fas fa-heartbeat text-white"></i></div>
-            <span class="font-bold text-xl uppercase italic">Golden Hour <span class="text-red-500">AI</span></span>
-        </div>
-        <div class="flex gap-2 text-xs font-bold">
-            <button onclick="switchTab('user')" class="px-4 py-1.5 bg-slate-800 rounded-full">USER</button>
-            <button onclick="switchTab('hospital')" class="px-4 py-1.5 bg-slate-800 rounded-full">HOSPITAL</button>
-        </div>
+    <nav class="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
+        <span class="font-bold text-red-500 underline decoration-2">GOLDEN HOUR AI</span>
+        <button onclick="switchTab()" class="text-xs bg-slate-800 px-3 py-1 rounded">Switch View</button>
     </nav>
 
-    <main id="user-tab" class="max-w-xl mx-auto p-6">
-        <div class="text-center mb-8">
-            <div id="sos-btn" class="pulse w-32 h-32 bg-red-600 rounded-full mx-auto mb-6 flex items-center justify-center border-4 border-red-500 shadow-2xl">
-                <span class="font-black text-2xl text-white tracking-widest">SOS</span>
-            </div>
-            <h1 class="text-2xl font-black mb-2 uppercase">Emergency Assistant</h1>
+    <main id="user-view" class="max-w-md mx-auto p-6">
+        <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+            <textarea id="incident" placeholder="What is the emergency?" class="w-full bg-black p-4 rounded-xl border border-slate-700 mb-4 h-32 focus:border-red-500 outline-none"></textarea>
+            <button onclick="triggerSOS()" id="sos-btn" class="w-full bg-red-600 py-4 rounded-xl font-bold uppercase tracking-widest hover:bg-red-700 transition">Activate Response</button>
         </div>
 
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-            <textarea id="desc" placeholder="Describe the incident..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white focus:ring-2 focus:ring-red-500 outline-none h-32 mb-4"></textarea>
-            
-            <button onclick="processEmergency()" id="submit-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-xl transition-all flex items-center justify-center gap-3 uppercase">
-                <i class="fas fa-bolt"></i> Get Immediate Help
-            </button>
+        <div id="response-box" class="hidden mt-6 bg-white text-slate-900 p-6 rounded-2xl border-l-8 border-red-600 animate-pulse">
+            <h2 class="font-black text-sm text-red-600 mb-2 uppercase">Instructions</h2>
+            <p id="ai-msg" class="text-xl font-bold leading-tight"></p>
         </div>
-
-        <div id="response-card" class="hidden mt-6 bg-white rounded-2xl p-6 border-l-8 border-red-600 text-slate-900 shadow-2xl">
-            <h3 class="font-black text-lg uppercase mb-2">AI Instructions</h3>
-            <p id="ai-text" class="text-xl leading-relaxed font-bold mb-4"></p>
-            <div class="text-[10px] text-slate-400 border-t pt-4 font-bold">GPS COORDINATES SENT TO DISPATCH</div>
-        </div>
-    </main>
-
-    <main id="hospital-tab" class="hidden max-w-5xl mx-auto p-6">
-        <h2 class="text-2xl font-black text-blue-400 mb-6 uppercase">Live Triage Feed</h2>
-        <div id="feed-container" class="grid gap-4"></div>
     </main>
 
     <script>
-        const N8N_WEBHOOK_URL = "https://bb101.app.n8n.cloud/webhook/emergency-trigger";
-        const ELEVEN_LABS_KEY = "sk_1b6fb7dc68678a9bcb24a7f50ccad3a2b0433c3a8c13ac3b";
+        // NOTE: Use PRODUCTION URL (remove -test) if you want it to stay alive!
+        const WEBHOOK_URL = "https://bb101.app.n8n.cloud/webhook/emergency-trigger"; 
+        const EL_KEY = "sk_1b6fb7dc68678a9bcb24a7f50ccad3a2b0433c3a8c13ac3b";
 
-        function switchTab(tab) {
-            document.getElementById('user-tab').classList.toggle('hidden', tab !== 'user');
-            document.getElementById('hospital-tab').classList.toggle('hidden', tab !== 'hospital');
-        }
+        async function triggerSOS() {
+            const btn = document.getElementById('sos-btn');
+            const msg = document.getElementById('incident').value;
+            if(!msg) return alert("Please enter details");
 
-        // AUTO-DETECT LOCATION ON CLICK
-        async function processEmergency() {
-            const btn = document.getElementById('submit-btn');
             btn.disabled = true;
-            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Locating & Triaging...`;
+            btn.innerText = "TRIAGING...";
 
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    async (position) => {
-                        const loc = `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
-                        await sendToN8N(loc);
-                    },
-                    async () => {
-                        await sendToN8N("Location Access Denied");
-                    }
-                );
-            } else {
-                await sendToN8N("GPS Not Supported");
-            }
+            // 1. Get Location
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const coords = `${pos.coords.latitude}, ${pos.coords.longitude}`;
+                await sendData(msg, coords);
+            }, async () => {
+                await sendData(msg, "Location Denied");
+            });
         }
 
-        async function sendToN8N(currentLoc) {
-            const desc = document.getElementById('desc').value;
+        async function sendData(incident, location) {
             try {
-                const res = await fetch(N8N_WEBHOOK_URL, {
+                const response = await fetch(WEBHOOK_URL, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        incident: desc, 
-                        location: currentLoc, // THIS SENDS THE LOCATION
-                        timestamp: new Date().toLocaleTimeString() 
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ incident, location })
                 });
+
+                const data = await response.json();
+                console.log("N8N Response:", data);
+
+                // FIX: Ensure we handle the key correctly
+                const finalMsg = data.ai_response || data.text || "Help is on the way. Stay calm.";
                 
-                const data = await res.json();
-                document.getElementById('response-card').classList.remove('hidden');
-                document.getElementById('ai-text').innerText = data.ai_response;
-                
-                speak(data.ai_response);
-                updateHospitalFeed(desc, currentLoc);
-            } catch (e) {
-                alert("N8N Webhook Error");
+                document.getElementById('response-box').classList.remove('hidden');
+                document.getElementById('ai-msg').innerText = finalMsg;
+
+                // Voice
+                speak(finalMsg);
+
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                alert("Connection failed. Ensure n8n workflow is ACTIVE.");
             } finally {
-                const btn = document.getElementById('submit-btn');
-                btn.disabled = false;
-                btn.innerHTML = `<i class="fas fa-bolt"></i> Get Immediate Help`;
+                document.getElementById('sos-btn').disabled = false;
+                document.getElementById('sos-btn').innerText = "Activate Response";
             }
         }
 
@@ -118,22 +81,15 @@
             try {
                 const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL`, {
                     method: 'POST',
-                    headers: { 'xi-api-key': ELEVEN_LABS_KEY, 'Content-Type': 'application/json' },
+                    headers: { 'xi-api-key': EL_KEY, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text: text, model_id: "eleven_monolingual_v1" })
                 });
                 const blob = await res.blob();
                 new Audio(URL.createObjectURL(blob)).play();
-            } catch {
-                window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+            } catch (e) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                window.speechSynthesis.speak(utterance);
             }
-        }
-
-        function updateHospitalFeed(inc, loc) {
-            const feed = document.getElementById('feed-container');
-            const div = document.createElement('div');
-            div.className = "bg-slate-900 p-4 rounded-xl border-l-4 border-red-600 flex justify-between items-center";
-            div.innerHTML = `<div><div class="font-bold text-white">${inc}</div><div class="text-xs text-slate-500">${loc}</div></div><button class="bg-blue-600 px-4 py-2 rounded text-xs font-bold">DISPATCH</button>`;
-            feed.prepend(div);
         }
     </script>
 </body>
