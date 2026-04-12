@@ -1,0 +1,78 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "emergency-trigger",
+        "responseMode": "lastNode"
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyCCalrAZFBvA5zCAS0uhQOw3pzBOXicAKs",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contents",
+              "value": "={{ [ { \"parts\": [ { \"text\": \"System: You are an Emergency AI. Provide short first aid for: \" + $node[\"Webhook\"].json.body.incident + \". End with DATA: {\\\"severity\\\": \\\"CRITICAL\\\", \\\"type\\\": \\\"Medical\\\", \\\"ambulance\\\": true}\" } ] } ] }}"
+            }
+          ]
+        }
+      },
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [350, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $node[\"HTTP Request\"].json.candidates[0].content.parts[0].text;\nconst parts = text.split('DATA:');\nconst aiMsg = parts[0].trim();\n\nlet jsonData = { severity: \"URGENT\", type: \"General\", ambulance: true };\ntry {\n    jsonData = JSON.parse(parts[1].trim());\n} catch (e) {}\n\n// SAFETY CHECK: Fixes the 'undefined location' error\nconst body = $node[\"Webhook\"].json.body || {};\nconst incidentLocation = body.location || \"Unknown Location\";\nconst incidentText = body.incident || \"No description provided\";\n\nreturn {\n    ai_response: aiMsg,\n    severity: jsonData.severity,\n    type: jsonData.type,\n    location: incidentLocation,\n    incident: incidentText\n};"
+      },
+      "name": "Data Parser",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": "1IuawfuwYm6kDfY0IAi0hcgnFZzb9_ayi5n9BUPDHum0",
+        "sheetName": "Sheet1",
+        "columns": {
+          "mappingMode": "defineCanals",
+          "value": {
+            "Timestamp": "={{ $now }}",
+            "Incident": "={{ $json.incident }}",
+            "Severity": "={{ $json.severity }}",
+            "Location": "={{ $json.location }}"
+          }
+        }
+      },
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1100, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "HTTP Request", "type": "main", "index": 0 }]] },
+    "HTTP Request": { "main": [[{ "node": "Data Parser", "type": "main", "index": 0 }]] },
+    "Data Parser": { "main": [[{ "node": "Google Sheets", "type": "main", "index": 0 }]] },
+    "Google Sheets": { "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]] }
+  }
+}
