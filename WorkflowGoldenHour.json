@@ -1,78 +1,401 @@
 {
+  "name": "Golden Hour AI",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "emergency-trigger",
-        "responseMode": "lastNode"
+        "path": "golden-hour-ai",
+        "responseMode": "responseNode",
+        "options": {}
       },
-      "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [100, 300]
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4dae73b9-3269-4b6e-a715-5f3073d346a0",
+      "name": "Webhook",
+      "webhookId": "c7a8f62f-d413-447d-b26b-6ab924c4f6db"
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyCCalrAZFBvA5zCAS0uhQOw3pzBOXicAKs",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
+        "keepOnlySet": true,
+        "values": {
+          "string": [
             {
-              "name": "contents",
-              "value": "={{ [ { \"parts\": [ { \"text\": \"System: You are an Emergency AI. Provide short first aid for: \" + $node[\"Webhook\"].json.body.incident + \". End with DATA: {\\\"severity\\\": \\\"CRITICAL\\\", \\\"type\\\": \\\"Medical\\\", \\\"ambulance\\\": true}\" } ] } ] }}"
+              "name": "name",
+              "value": "={{ $json.body.name }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $json.body.phone }}"
+            },
+            {
+              "name": "symptoms",
+              "value": "={{ $json.body.symptoms }}"
+            },
+            {
+              "name": "latitude",
+              "value": "={{ $json.body.latitude }}"
+            },
+            {
+              "name": "longitude",
+              "value": "={{ $json.body.longitude }}"
+            },
+            {
+              "name": "location",
+              "value": "={{ $json.body.latitude }},{{ $json.body.longitude }}"
             }
           ]
-        }
+        },
+        "options": {}
       },
-      "name": "HTTP Request",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [350, 300]
+      "id": "33a07914-4b2c-47d4-93d3-c31671ae3072",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        144,
+        96
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const text = $node[\"HTTP Request\"].json.candidates[0].content.parts[0].text;\nconst parts = text.split('DATA:');\nconst aiMsg = parts[0].trim();\n\nlet jsonData = { severity: \"URGENT\", type: \"General\", ambulance: true };\ntry {\n    jsonData = JSON.parse(parts[1].trim());\n} catch (e) {}\n\n// SAFETY CHECK: Fixes the 'undefined location' error\nconst body = $node[\"Webhook\"].json.body || {};\nconst incidentLocation = body.location || \"Unknown Location\";\nconst incidentText = body.incident || \"No description provided\";\n\nreturn {\n    ai_response: aiMsg,\n    severity: jsonData.severity,\n    type: jsonData.type,\n    location: incidentLocation,\n    incident: incidentText\n};"
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an emergency triage doctor AI.\n\nClassify emergency level:\n1 = Mild\n2 = Urgent\n3 = Critical (Ambulance needed)\n\nReturn ONLY valid JSON:\n{\n \"triage_level\":\"\",\n \"ambulance_required\":\"\",\n \"reason\":\"\"\n}\nambulance_required must be YES or NO."
+            },
+            {
+              "content": "=Patient symptoms: {{$json[\"symptoms\"]}}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
       },
-      "name": "Data Parser",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [600, 300]
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        272,
+        -80
+      ],
+      "id": "e6ea8dad-059b-49fa-ba7a-e772a24a8083",
+      "name": "Triage AI",
+      "credentials": {
+        "openAiApi": {
+          "id": "eFJUWb8sVFwvaubS",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a paramedic AI.\nProvide step-by-step first aid instructions.\nMax 8 steps.\nUse simple language."
+            },
+            {
+              "content": "=Symptoms: {{$node[\"Prepare Input\"].json[\"symptoms\"]}}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        640,
+        -64
+      ],
+      "id": "d1d64763-280a-4fd2-bfc7-6323e5bda193",
+      "name": "First Aid AI",
+      "credentials": {
+        "openAiApi": {
+          "id": "eFJUWb8sVFwvaubS",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
     },
     {
       "parameters": {
         "operation": "append",
-        "documentId": "1IuawfuwYm6kDfY0IAi0hcgnFZzb9_ayi5n9BUPDHum0",
-        "sheetName": "Sheet1",
+        "documentId": {
+          "__rl": true,
+          "value": "16wGCWck1kdQUJaVFTnLUHn1ZcKabW35a4uFwYpQ0OcQ",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "EmergencyLogs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16wGCWck1kdQUJaVFTnLUHn1ZcKabW35a4uFwYpQ0OcQ/edit#gid=0"
+        },
         "columns": {
-          "mappingMode": "defineCanals",
+          "mappingMode": "defineBelow",
           "value": {
-            "Timestamp": "={{ $now }}",
-            "Incident": "={{ $json.incident }}",
-            "Severity": "={{ $json.severity }}",
-            "Location": "={{ $json.location }}"
-          }
-        }
+            " Timestamp ": "={{$now}}",
+            "Latitude ": "={{$node[\"Prepare Input\"].json[\"phone\"]}}",
+            "Longitude ": "={{$node[\"Prepare Input\"].json[\"location\"]}}",
+            "Actions ": "={{ $json.output[0].content[0].text }}",
+            "Status ": "={{ $json.output[0].status }}",
+            "User Name ": "={{ $('Prepare Input').item.json.name }}",
+            "Symptoms": "={{ $('Prepare Input').item.json.symptoms }}",
+            "Triage Level ": "={{ $('Parse Triage JSON').item.json.triage_level }}",
+            "Ambulance Required": "={{ $('Parse Triage JSON').item.json.ambulance_required }}",
+            "AI Response JSON ": "={{ $('Parse Triage JSON').item.json.reason }}"
+          },
+          "matchingColumns": [
+            "| Timestamp | UserName | Latitude | Longitude | Transcript | TriageLevel | AIResponseJSON | Actions | Status |"
+          ],
+          "schema": [
+            {
+              "id": " Timestamp ",
+              "displayName": " Timestamp ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "User Name ",
+              "displayName": "User Name ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Latitude ",
+              "displayName": "Latitude ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Longitude ",
+              "displayName": "Longitude ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Symptoms",
+              "displayName": "Symptoms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Triage Level ",
+              "displayName": "Triage Level ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Ambulance Required",
+              "displayName": "Ambulance Required",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "AI Response JSON ",
+              "displayName": "AI Response JSON ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Actions ",
+              "displayName": "Actions ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status ",
+              "displayName": "Status ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
       },
-      "name": "Google Sheets",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.2,
-      "position": [850, 300]
+      "typeVersion": 4.7,
+      "position": [
+        912,
+        64
+      ],
+      "id": "cb3d7969-b96d-4994-993c-0fa8c878ba9c",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FqXmzSUQ93uXikNg",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
     },
     {
       "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"triage_level\": \"{{$node['Parse Triage JSON'].json['triage_level']}}\",\n  \"ambulance_required\": \"{{$node['Parse Triage JSON'].json['ambulance_required']}}\",\n  \"reason\": {{ JSON.stringify($('Parse Triage JSON').item.json.reason) }}\n}",
         "options": {}
       },
-      "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1100, 300]
+      "typeVersion": 1.5,
+      "position": [
+        1056,
+        -32
+      ],
+      "id": "ad6eff2b-eec8-48bf-beda-25e1bd0ef395",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const txt = $input.first().json.output[0].content[0].text\nreturn [{ json: JSON.parse(txt) }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        48
+      ],
+      "id": "59818527-d417-418e-8b22-e2e94fc132be",
+      "name": "Parse Triage JSON"
     }
   ],
+  "pinData": {},
   "connections": {
-    "Webhook": { "main": [[{ "node": "HTTP Request", "type": "main", "index": 0 }]] },
-    "HTTP Request": { "main": [[{ "node": "Data Parser", "type": "main", "index": 0 }]] },
-    "Data Parser": { "main": [[{ "node": "Google Sheets", "type": "main", "index": 0 }]] },
-    "Google Sheets": { "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]] }
-  }
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "Triage AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Triage AI": {
+      "main": [
+        [
+          {
+            "node": "Parse Triage JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "First Aid AI": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Triage JSON": {
+      "main": [
+        [
+          {
+            "node": "First Aid AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b433a1ef-255e-4602-ac2e-2db63cd19b48",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "76d4dda19ee8408372932503c43726f01ddcd7faad4317471d96c070c895d3c2"
+  },
+  "id": "BnxxdZ5N1bbpvElp",
+  "tags": []
 }
