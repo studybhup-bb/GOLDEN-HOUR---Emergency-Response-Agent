@@ -11,10 +11,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        0,
-        0
+        -272,
+        80
       ],
-      "id": "4dae73b9-3269-4b6e-a715-5f3073d346a0",
+      "id": "f55e65d6-ec1c-4062-80f5-a2329536a42c",
       "name": "Webhook",
       "webhookId": "c7a8f62f-d413-447d-b26b-6ab924c4f6db"
     },
@@ -25,39 +25,43 @@
           "string": [
             {
               "name": "name",
-              "value": "={{ $json.body.name }}"
+              "value": "={{ $json.body.user.name }}"
             },
             {
               "name": "phone",
-              "value": "={{ $json.body.phone }}"
+              "value": "={{ $json.body.user.phone }}"
             },
             {
-              "name": "symptoms",
-              "value": "={{ $json.body.symptoms }}"
-            },
-            {
-              "name": "latitude",
-              "value": "={{ $json.body.latitude }}"
-            },
-            {
-              "name": "longitude",
-              "value": "={{ $json.body.longitude }}"
+              "name": "incident",
+              "value": "={{ $json.body.incident }}"
             },
             {
               "name": "location",
-              "value": "={{ $json.body.latitude }},{{ $json.body.longitude }}"
+              "value": "={{ $json.body.location }}"
+            },
+            {
+              "name": "bloodGroup",
+              "value": "={{ $json.body.user.bloodGroup }}"
+            },
+            {
+              "name": "emergencyContact",
+              "value": "={{ $json.body.user.emergencyContact }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $json.body.timestamp }}"
             }
           ]
         },
         "options": {}
       },
-      "id": "33a07914-4b2c-47d4-93d3-c31671ae3072",
+      "id": "7edb63f1-fa4d-4f21-98f3-897f60b9d0a5",
       "name": "Prepare Input",
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
       "position": [
-        144,
-        96
+        -128,
+        176
       ]
     },
     {
@@ -75,7 +79,7 @@
               "content": "You are an emergency triage doctor AI.\n\nClassify emergency level:\n1 = Mild\n2 = Urgent\n3 = Critical (Ambulance needed)\n\nReturn ONLY valid JSON:\n{\n \"triage_level\":\"\",\n \"ambulance_required\":\"\",\n \"reason\":\"\"\n}\nambulance_required must be YES or NO."
             },
             {
-              "content": "=Patient symptoms: {{$json[\"symptoms\"]}}"
+              "content": "=Patient symptoms: {{ $json.incident }}"
             }
           ]
         },
@@ -85,14 +89,14 @@
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 2.1,
       "position": [
-        272,
-        -80
+        0,
+        0
       ],
-      "id": "e6ea8dad-059b-49fa-ba7a-e772a24a8083",
+      "id": "6988be18-4cda-4167-8aca-384cd048fc64",
       "name": "Triage AI",
       "credentials": {
         "openAiApi": {
-          "id": "eFJUWb8sVFwvaubS",
+          "id": "FhAZDcTL84tmhLaJ",
           "name": "n8n free OpenAI API credits"
         }
       }
@@ -112,7 +116,7 @@
               "content": "You are a paramedic AI.\nProvide step-by-step first aid instructions.\nMax 8 steps.\nUse simple language."
             },
             {
-              "content": "=Symptoms: {{$node[\"Prepare Input\"].json[\"symptoms\"]}}"
+              "content": "=Symptoms: {{ $('Prepare Input').item.json.incident }}"
             }
           ]
         },
@@ -122,14 +126,14 @@
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 2.1,
       "position": [
-        640,
-        -64
+        368,
+        16
       ],
-      "id": "d1d64763-280a-4fd2-bfc7-6323e5bda193",
+      "id": "08ed4f4f-f3f1-4a18-84e5-b3393f9a1da1",
       "name": "First Aid AI",
       "credentials": {
         "openAiApi": {
-          "id": "eFJUWb8sVFwvaubS",
+          "id": "FhAZDcTL84tmhLaJ",
           "name": "n8n free OpenAI API credits"
         }
       }
@@ -139,33 +143,31 @@
         "operation": "append",
         "documentId": {
           "__rl": true,
-          "value": "16wGCWck1kdQUJaVFTnLUHn1ZcKabW35a4uFwYpQ0OcQ",
-          "mode": "id"
+          "mode": "id",
+          "value": "159bsWWUVk3uHgQWfJpukaTm1L-dL_HX2vSgGgqkwzns"
         },
         "sheetName": {
           "__rl": true,
-          "value": "gid=0",
+          "value": 653497712,
           "mode": "list",
           "cachedResultName": "EmergencyLogs",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16wGCWck1kdQUJaVFTnLUHn1ZcKabW35a4uFwYpQ0OcQ/edit#gid=0"
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/159bsWWUVk3uHgQWfJpukaTm1L-dL_HX2vSgGgqkwzns/edit#gid=653497712"
         },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            " Timestamp ": "={{$now}}",
-            "Latitude ": "={{$node[\"Prepare Input\"].json[\"phone\"]}}",
-            "Longitude ": "={{$node[\"Prepare Input\"].json[\"location\"]}}",
-            "Actions ": "={{ $json.output[0].content[0].text }}",
-            "Status ": "={{ $json.output[0].status }}",
+            "Triage AI Response": "={{ $('Parse Triage JSON').item.json.reason }}",
+            "Incident": "={{ $('Prepare Input').item.json.incident }}",
+            "Location": "={{ $('Prepare Input').item.json.location }}",
+            "Emergency Contact": "={{ $('Prepare Input').item.json.emergencyContact }}",
+            "Blood Group": "={{ $('Prepare Input').item.json.bloodGroup }}",
             "User Name ": "={{ $('Prepare Input').item.json.name }}",
-            "Symptoms": "={{ $('Prepare Input').item.json.symptoms }}",
-            "Triage Level ": "={{ $('Parse Triage JSON').item.json.triage_level }}",
-            "Ambulance Required": "={{ $('Parse Triage JSON').item.json.ambulance_required }}",
-            "AI Response JSON ": "={{ $('Parse Triage JSON').item.json.reason }}"
+            "Mobile No": "={{ $('Prepare Input').item.json.phone }}",
+            " Timestamp ": "={{ $('Prepare Input').item.json.timestamp }}",
+            "First Aid AI Actions ": "={{ $json.output[0].content[0].text }}",
+            "Status ": "={{ $json.output[0].status }}"
           },
-          "matchingColumns": [
-            "| Timestamp | UserName | Latitude | Longitude | Transcript | TriageLevel | AIResponseJSON | Actions | Status |"
-          ],
+          "matchingColumns": [],
           "schema": [
             {
               "id": " Timestamp ",
@@ -174,8 +176,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "User Name ",
@@ -184,78 +185,70 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
-              "id": "Latitude ",
-              "displayName": "Latitude ",
+              "id": "Mobile No",
+              "displayName": "Mobile No",
               "required": false,
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
-              "id": "Longitude ",
-              "displayName": "Longitude ",
+              "id": "Blood Group",
+              "displayName": "Blood Group",
               "required": false,
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
-              "id": "Symptoms",
-              "displayName": "Symptoms",
+              "id": "Emergency Contact",
+              "displayName": "Emergency Contact",
               "required": false,
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
-              "id": "Triage Level ",
-              "displayName": "Triage Level ",
+              "id": "Location",
+              "displayName": "Location",
               "required": false,
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
-              "id": "Ambulance Required",
-              "displayName": "Ambulance Required",
+              "id": "Incident",
+              "displayName": "Incident",
               "required": false,
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
-              "id": "AI Response JSON ",
-              "displayName": "AI Response JSON ",
+              "id": "Triage AI Response",
+              "displayName": "Triage AI Response",
               "required": false,
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
-              "id": "Actions ",
-              "displayName": "Actions ",
+              "id": "First Aid AI Actions ",
+              "displayName": "First Aid AI Actions ",
               "required": false,
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "Status ",
@@ -264,8 +257,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             }
           ],
           "attemptToConvertTypes": false,
@@ -276,15 +268,15 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        912,
-        64
+        640,
+        144
       ],
-      "id": "cb3d7969-b96d-4994-993c-0fa8c878ba9c",
+      "id": "bca4cc15-0279-4ea7-851b-c60ff57036f8",
       "name": "Append row in sheet",
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "FqXmzSUQ93uXikNg",
-          "name": "Google Sheets OAuth2 API"
+          "id": "JDabam6atznS3rtj",
+          "name": "Google Study Bhup API"
         }
       }
     },
@@ -297,10 +289,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        1056,
-        -32
+        784,
+        48
       ],
-      "id": "ad6eff2b-eec8-48bf-beda-25e1bd0ef395",
+      "id": "9feb64a2-efb3-4a07-bf00-3925bed5ce0e",
       "name": "Respond to Webhook"
     },
     {
@@ -310,10 +302,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        528,
-        48
+        256,
+        128
       ],
-      "id": "59818527-d417-418e-8b22-e2e94fc132be",
+      "id": "0bea81fa-ce16-4751-8564-7eaa417479e5",
       "name": "Parse Triage JSON"
     }
   ],
@@ -391,11 +383,11 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "b433a1ef-255e-4602-ac2e-2db63cd19b48",
+  "versionId": "7b3f51b5-5bf5-4cde-9886-8d901347869e",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "76d4dda19ee8408372932503c43726f01ddcd7faad4317471d96c070c895d3c2"
+    "instanceId": "230c96cc3511996bff6c9a658f78080280f08713dcf7291aecb6ea4f64d3df04"
   },
-  "id": "BnxxdZ5N1bbpvElp",
+  "id": "aZFrpQXcP3ZemDGZ",
   "tags": []
 }
