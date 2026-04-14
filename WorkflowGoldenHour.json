@@ -76,7 +76,7 @@
           "values": [
             {
               "role": "system",
-              "content": "You are an emergency triage doctor AI.\n\nClassify emergency level:\n1 = Mild\n2 = Urgent\n3 = Critical (Ambulance needed)\n\nReturn ONLY valid JSON:\n{\n \"triage_level\":\"\",\n \"ambulance_required\":\"\",\n \"reason\":\"\"\n}\nambulance_required must be YES or NO."
+              "content": "You are Golden Hour AI Triage Doctor.\nYour task is to quickly assess the severity of an emergency based on the incident description.\n\nYou must classify the situation using standard emergency triage levels.\n\n*Triage Levels*\n\tL1 – CRITICAL → Immediate life threat (unconscious, not breathing, heavy bleeding, cardiac arrest, stroke, seizure, severe trauma, drowning, choking)\n\tL2 – EMERGENT → Serious and time-sensitive (fractures, severe burns, chest pain, breathing difficulty, head injury)\n\tL3 – URGENT → Needs care soon (deep cuts, high fever, moderate injuries, possible infection)\n\tL4 – LESS URGENT → Mild symptoms (minor injury, mild fever, sprain)\n\tL5 – MINOR → Very small issues (small cuts, mild pain)\n\n*Ambulance Decision Rules*\n\tReturn YES if level is L1, L2, or L3\n\tReturn NO if level is L4 or L5\n\n*Output Rules (STRICT)*\n\tOutput ONLY valid JSON\n\tNo text before or after JSON\n\tNo explanations outside JSON\n\tKeep the reason short and clear (max 30 words)\n\n*Output Format*\n\t{\n\t\t\"triage_level\": \"L1 | L2 | L3 | L4 | L5\",\n\t\t\"ambulance_required\": \"YES | NO\",\n\t\t\"reason\": \"short reason\"\n\t}\n\n*Example Output*\n\t{\n\t\t\"triage_level\": \"L2\",\n\t\t\"ambulance_required\": \"YES\",\n\t\t\"reason\": \"Possible fracture and severe pain\"\n\t}"
             },
             {
               "content": "=Patient symptoms: {{ $json.incident }}"
@@ -113,7 +113,7 @@
           "values": [
             {
               "role": "system",
-              "content": "You are a paramedic AI.\nProvide step-by-step first aid instructions.\nMax 8 steps.\nUse simple language."
+              "content": "You are Golden Hour AI, an emergency first-aid assistant acting like a trained paramedic.\n\nYour job is to analyze the incident and provide clear, calm and life-saving first aid guidance until professional help arrives.\n\n*Response Rules*\n\tProvide step-by-step first aid instructions only\n\tMinimum 2 steps, Maximum 8 steps\n\tUse simple, non-medical language\n\tKeep total response under 500 characters\n\tBe calm, reassuring and direct\n\tAssume the user has no medical training\n\tFocus only on immediate actions, not diagnosis\n\tIf situation seems life-threatening, include call emergency services immediately\n\n\n*Tone Guidelines*\n\tUse short numbered steps\n\tAvoid complex medical terms\n\tAvoid long explanations\n\tNo disclaimers, no extra text, no greetings\n\n\n*Output Format (STRICT)*\n\nReturn only the instructions text that will be spoken to the user.\n\nExample format:\n1\n2\n3\n\nDo not return JSON. Do not add headings. Do not add explanations."
             },
             {
               "content": "=Symptoms: {{ $('Prepare Input').item.json.incident }}"
@@ -161,31 +161,33 @@
             "Location": "={{ $('Prepare Input').item.json.location }}",
             "Emergency Contact": "={{ $('Prepare Input').item.json.emergencyContact }}",
             "Blood Group": "={{ $('Prepare Input').item.json.bloodGroup }}",
-            "User Name ": "={{ $('Prepare Input').item.json.name }}",
             "Mobile No": "={{ $('Prepare Input').item.json.phone }}",
-            " Timestamp ": "={{ $('Prepare Input').item.json.timestamp }}",
-            "First Aid AI Actions ": "={{ $json.output[0].content[0].text }}",
-            "Status ": "={{ $json.output[0].status }}"
+            "Status ": "={{ $json.output[0].status }}",
+            " Timestamp": "={{ $('Prepare Input').item.json.timestamp }}",
+            "User Name": "={{ $('Prepare Input').item.json.name }}",
+            "First Aid AI Actions": "={{ $json.output[0].content[0].text }}"
           },
           "matchingColumns": [],
           "schema": [
             {
-              "id": " Timestamp ",
-              "displayName": " Timestamp ",
+              "id": " Timestamp",
+              "displayName": " Timestamp",
               "required": false,
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
-              "id": "User Name ",
-              "displayName": "User Name ",
+              "id": "User Name",
+              "displayName": "User Name",
               "required": false,
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Mobile No",
@@ -242,13 +244,14 @@
               "canBeUsedToMatch": true
             },
             {
-              "id": "First Aid AI Actions ",
-              "displayName": "First Aid AI Actions ",
+              "id": "First Aid AI Actions",
+              "displayName": "First Aid AI Actions",
               "required": false,
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Status ",
@@ -283,7 +286,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\n  \"status\": \"success\",\n  \"triage_level\": \"{{$node['Parse Triage JSON'].json['triage_level']}}\",\n  \"ambulance_required\": \"{{$node['Parse Triage JSON'].json['ambulance_required']}}\",\n  \"reason\": {{ JSON.stringify($('Parse Triage JSON').item.json.reason) }}\n}",
+        "responseBody": "={{\n{\n  status: \"success\",\n  triage_level: $node[\"Parse Triage JSON\"].json.triage_level,\n  ambulance_required: $node[\"Parse Triage JSON\"].json.ambulance_required,\n  actions: $node[\"First Aid AI\"].json.output[0].content[0].text,\n  reason: $node[\"Parse Triage JSON\"].json.reason\n}\n}}",
         "options": {}
       },
       "type": "n8n-nodes-base.respondToWebhook",
@@ -383,7 +386,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "7b3f51b5-5bf5-4cde-9886-8d901347869e",
+  "versionId": "877c3c80-f4bf-444f-8825-b145282088c0",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "230c96cc3511996bff6c9a658f78080280f08713dcf7291aecb6ea4f64d3df04"
